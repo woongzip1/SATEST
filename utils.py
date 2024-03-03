@@ -13,10 +13,14 @@ class FrameExtractor:
         self.total_frames = 0
         self.hamm_window = lr.filters.get_window(window="hamming", Nx=self.win_len)
         self.rect_window = lr.filters.get_window(window="rectangular", Nx=self.win_len)
+        self.hann_window = lr.filters.get_window(window="hann", Nx=self.win_len)
+
+
         
     def extract_frames(self, win_type="rectangular"):
         # Make window
         
+        print(win_type)
         frames=[]
         for n in range(0, len(self.function), self.hop_len):
             # 마지막에서 끝을 clip하고 난 후 return 한다
@@ -26,6 +30,10 @@ class FrameExtractor:
             region = self.function[n:n + self.win_len]
             if win_type == "hamming":
                 region = region * self.hamm_window
+            elif win_type == "hann":
+                region = region * self.hann_window
+            # elif win_type == "rectangular":
+            #     region = region * self.rect_window
             
             self.total_frames += 1
             frames.append(region)
