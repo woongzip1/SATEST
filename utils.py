@@ -3,7 +3,8 @@
 
 import librosa as lr
 import numpy as np
-
+import scipy
+from matplotlib import pyplot as plt
 
 class FrameExtractor:
     def __init__(self, function, win_len, hop_len):
@@ -20,6 +21,7 @@ class FrameExtractor:
     def extract_frames(self, win_type="rectangular"):
         # Make window
         
+        self.total_frames = 0
         print(win_type)
         frames=[]
         for n in range(0, len(self.function), self.hop_len):
@@ -163,3 +165,91 @@ def ref_derbin(r, order):
     # Extract final coeff, exclude a0    
     coeff = a[order][1:]
     return coeff,E
+
+
+## Plot Envelope Using LPC
+def PlotLPCSpectrum(signal, sr, p=10, dftlen=2048):
+    # signal_fft = np.fft.fft(signal)
+    # signal_fft = np.fft.rfft(signal,dftlen)[1:]
+    freqs = np.linspace(0, sr/2, dftlen//2)
+    signal_f = np.fft.rfft(signal, dftlen)[:-1]
+
+    coeff = LPC(signal, order=p)
+    lpc_coeff = np.concatenate(([1],-coeff))
+    
+    # # Energy
+    # w, h = scipy.signal.freqz([0.15], lpc_coeff)
+    # signal_energy = np.sum(np.abs(signal_f)**2)
+    # lpc_energy = np.sum(np.abs(h)**2)  # LPC 스펙트럼의 에너지 계산
+    # adjust_factor = np.sqrt(signal_energy / lpc_energy)
+    adjust_factor = 0.05
+    
+    print("adj:",adjust_factor)
+    w2, h2 = scipy.signal.freqz([adjust_factor], lpc_coeff, worN = dftlen//2)
+
+    
+    plt.figure(figsize=(10,6))
+    # plt.subplot(1, 2, 1)
+    plt.plot(freqs, 20 * np.log10(np.abs(signal_f)), label='Original Signal Spectrum')
+    plt.title('Signal Frequency Spectrum')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Magnitude (dB)')
+    plt.xlim(0, sr//2)
+    plt.grid(True)
+
+    # plt.subplot(1, 2, 2)
+    plt.plot(freqs, 20 * np.log10(np.abs(h2)), label='LPC Filter Frequency Response')
+    plt.title('LPC Filter Frequency Response')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Gain (dB)')
+    plt.grid(True)
+    # plt.ylim(-50, 35)
+    plt.tight_layout()
+    plt.show()
+    
+"""Pitch Detectors"""
+## CL Clipping - Center clipping
+class ThresholdClipper:
+    def __init__(self, function):
+        self.function = function
+        self.CL = self.calculate_thres()
+        self.CL_max = self.calculate_thres_max()
+        
+        
+    def calculate_thres_max(self):
+        function = np.abs(self.function)
+        CL = 0.4 * np.max(function)
+        return CL
+        
+    def calculate_thres(self):
+        function = np.abs(self.function)
+        first_max = np.max(function[0:len(function)//3]) 
+        last_max = np.max(function[len(function)//3 * 2:])
+        CL = 0.68 * min(first_max,last_max)
+        return CL
+        
+    def center_clip(self,CL):
+        function = self.function
+        y = np.zeros_like(function)
+        for n in range(0,len(y)):
+            val = function[n]
+            if val >= CL:
+                y[n] = val - CL
+            elif val <= (-1*CL):
+                y[n] = val + CL
+            else:
+                y[n] = 0
+        return y
+    
+    def infinite_clip(self,CL):
+        function = self.function
+        y = np.zeros_like(function)
+        for n in range(0,len(y)):
+            val = function[n]
+            if val >= CL:
+                y[n] = 1
+            elif val <= (-1*CL):
+                y[n] = -1
+            else:
+                y[n] = 0
+        return y        
