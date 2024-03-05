@@ -182,6 +182,8 @@ def PlotLPCSpectrum(signal, sr, p=10, dftlen=2048):
     # signal_energy = np.sum(np.abs(signal_f)**2)
     # lpc_energy = np.sum(np.abs(h)**2)  # LPC 스펙트럼의 에너지 계산
     # adjust_factor = np.sqrt(signal_energy / lpc_energy)
+    
+    
     adjust_factor = 0.05
     
     print("adj:",adjust_factor)
